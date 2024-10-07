@@ -1,9 +1,6 @@
 azure-ai-textanalytics==5.0.0
 azure-ai-translation-text==1.0.0b1
 azure-ai-vision-imageanalysis==1.0.0b3
+azure-cognitiveservices-speech==1.40.0
 python-dotenv==1.0.0
-pytesseract==0.3.10
-requests==2.32.3
-speechrecognition==3.10.0
-pyttsx3==2.9
 streamlit==1.26.0

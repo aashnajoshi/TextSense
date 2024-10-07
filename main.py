@@ -3,6 +3,7 @@ from azure.ai.translation.text.models import InputTextItem
 from azure.ai.textanalytics import TextAnalyticsClient
 from azure.ai.vision.imageanalysis import ImageAnalysisClient
 from azure.ai.vision.imageanalysis.models import VisualFeatures
+import azure.cognitiveservices.speech as speechsdk
 from azure.core.credentials import AzureKeyCredential
 from dotenv import load_dotenv
 import tkinter as tk
@@ -18,33 +19,42 @@ ai_endpoint = os.getenv('AI_SERVICE_ENDPOINT')
 ai_key = os.getenv('AI_SERVICE_KEY')
 translator_region = os.getenv('TRANSLATOR_REGION')
 translator_key = os.getenv('TRANSLATOR_KEY')
+speech_key = os.getenv("SPEECH_API_KEY")
+speech_region = os.getenv("SPEECH_REGION")
 
 def analyze_sentiment(input_text):
     client = TextAnalyticsClient(endpoint=text_analytics_endpoint, credential=AzureKeyCredential(text_analytics_key))
     response = client.analyze_sentiment([input_text])
     return response[0]
 
-def analyze_text_input(inputText, target_language):
+def display_results(language_info, sentiment_info):
+    print(f"Language detected: {language_info['name']} ({language_info['code']})")
+    print(f"Sentiment detected: {sentiment_info['sentiment']}\n")
+    print("Please visit the following link to find the language codes of the supported Languages: https://docs.microsoft.com/en-us/azure/cognitive-services/translator/language-support\n")
+
+def analyze_text_input(inputText):
     translator_client = TextTranslationClient(TranslatorCredential(translator_key, translator_region))
-    client = TextAnalyticsClient(endpoint=text_analytics_endpoint, credential=AzureKeyCredential(text_analytics_key))
-    
     sentiment_result = analyze_sentiment(inputText)
     sentiment = sentiment_result.sentiment
     confidence_scores = sentiment_result.confidence_scores
+    language_info = {'name': 'English', 'code': 'en'}
+    sentiment_info = {
+        'sentiment': sentiment,
+        'confidence_scores': confidence_scores}
+
+    display_results(language_info, sentiment_info)
+    target_language = input("Enter the target language code for translation (e.g., 'fr' for French) or 'q' for quit: ")
+    if target_language.lower() == 'q':
+        print("Exiting the program.")
+        return
 
     input_text_elements = [InputTextItem(text=inputText)]
     translationResponse = translator_client.translate(content=input_text_elements, to=[target_language])
     translation = translationResponse[0] if translationResponse else None
 
     if translation:
-        sourceLanguage = translation.detected_language
         translated_text = translation.translations[0].text
-        return {
-            "source_language": sourceLanguage,
-            "sentiment": sentiment,
-            "confidence_scores": confidence_scores,
-            "translated_text": translated_text}
-    return None
+        print(f"\nTranslated text in language: {translated_text}\n")
 
 def get_image_file():
     root = tk.Tk()
@@ -66,39 +76,75 @@ def analyze_image(image_file):
         for block in result.read.blocks:
             for line in block.lines:
                 detected_text.append(line.text)
-    return detected_text
+    
+    if detected_text:
+        full_text = " ".join(detected_text)
+        print("Detected text from image:")
+        print(full_text)
+        analyze_text_input(full_text)
+    else:
+        print("No text detected in the image.")
+
+def speech_to_text():
+    speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
+    audio_config = speechsdk.AudioConfig(use_default_microphone=True)
+    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
+    print("Listening...")
+    result = speech_recognizer.recognize_once()
+    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+        print(f"Recognized: {result.text}")
+        return result.text
+    else:
+        print("No speech recognized.")
+        return None
+
+def analyze_voice_input():
+    recognized_text = speech_to_text()
+    if recognized_text:
+        sentiment_result = analyze_sentiment(recognized_text)
+        sentiment = sentiment_result.sentiment
+        confidence_scores = sentiment_result.confidence_scores
+        language_info = {'name': 'English', 'code': 'en'}
+        sentiment_info = {
+            'sentiment': sentiment,
+            'confidence_scores': confidence_scores}
+        
+        display_results(language_info, sentiment_info)
+        
+        target_language = input("Enter the target language code for translation (e.g., 'fr' for French) or 'q' for quit: ")
+        if target_language.lower() == 'q':
+            print("Exiting the program.")
+            return
+        
+        translator_client = TextTranslationClient(TranslatorCredential(translator_key, translator_region))
+        input_text_elements = [InputTextItem(text=recognized_text)]
+        translationResponse = translator_client.translate(content=input_text_elements, to=[target_language])
+        translation = translationResponse[0] if translationResponse else None
+
+        if translation:
+            translated_text = translation.translations[0].text
+            print(f"\nTranslated text in language: {translated_text}\n")
 
 def main():
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
-        input_type = input("What type of input do you want to analyze and translate?\n1. Text\n2. Image\nEnter your choice (1 or 2): ")
+        input_type = input("What type of input do you want to analyze and translate?\n1. Text\n2. Image\n3. Voice\nEnter your choice (1, 2, or 3): ")
         if input_type == '1':
             inputText = input("Enter text to analyze: ")
-            target_language = input("Enter the target language code for translation (e.g., 'fr' for French): ")
-            results = analyze_text_input(inputText, target_language)
-            if results:
-                print(f"Detected language: {results['source_language']}")
-                print(f"Sentiment: {results['sentiment']}")
-                print(f"Confidence scores: Positive: {results['confidence_scores'].positive}, Neutral: {results['confidence_scores'].neutral}, Negative: {results['confidence_scores'].negative}")
-                print(f"Translated text in {target_language}: {results['translated_text']}")
-                time.sleep(5)
-            else:
-                print("Error in translation.")
+            analyze_text_input(inputText)
+            time.sleep(10)
         elif input_type == '2':
             image_file = get_image_file()
             if image_file:
-                detected_text = analyze_image(image_file)
-                time.sleep(5)
-                if detected_text:
-                    print("Detected Text:")
-                    for line in detected_text:
-                        print(line)
-                else:
-                    print("No text detected in the image.")
+                analyze_image(image_file)
+                time.sleep(10)
             else:
                 print("No file selected.")
+        elif input_type == '3':
+            analyze_voice_input()
+            time.sleep(10)
         else:
-            print("Invalid choice. Please enter 1 or 2.")
+            print("Invalid choice. Please enter 1, 2, or 3.")
 
 if __name__ == "__main__":
     main()
