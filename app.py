@@ -29,8 +29,7 @@ def display_results(language_info, sentiment_info):
     st.write(f"Language detected: {language_info['name']} ({language_info['code']})")
     st.write(f"Sentiment detected: {sentiment_info['sentiment']}")
     st.write(f"Confidence Scores: Positive: {sentiment_info['confidence_scores'].positive}, Neutral: {sentiment_info['confidence_scores'].neutral}, Negative: {sentiment_info['confidence_scores'].negative}")
-    st.write("\n")
-    st.write("Please visit the following link to find the language codes of the supported Languages: https://docs.microsoft.com/en-us/azure/cognitive-services/translator/language-support")
+    st.write("\nPlease visit the following link to find the language codes of the supported Languages: https://docs.microsoft.com/en-us/azure/cognitive-services/translator/language-support")
 
 def translate_text(input_text, target_language):
     translator_client = TextTranslationClient(TranslatorCredential(translator_key, translator_region))
@@ -41,10 +40,10 @@ def translate_text(input_text, target_language):
 
 def analyze_image(image_file):
     client = ImageAnalysisClient(endpoint=ai_endpoint, credential=AzureKeyCredential(ai_key))
-    image = Image.open(image_file)
-    result = client.analyze(image_data=image.tobytes(), visual_features=["Read"])
+    image_data = image_file.read()
+    result = client.analyze(image_data=image_data, visual_features=["Read"])
     detected_text = " ".join([line.text for block in result.read.blocks for line in block.lines]) if result.read.blocks else None
-    return detected_text, image  
+    return detected_text, image_file
 
 def speech_to_text():
     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
@@ -53,14 +52,10 @@ def speech_to_text():
     result = speech_recognizer.recognize_once()
     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
         return result.text
-    else:
-        return None
+    else: return None
 
-# Streamlit UI
 st.title('TextSense')
-
 input_type = st.selectbox("Choose input type:", ["Text", "Image", "Voice"])
-
 if input_type == 'Text':
     input_text = st.text_area("Enter text to analyze")
     if st.button("Analyze Text"):
@@ -68,27 +63,27 @@ if input_type == 'Text':
         language_info = {'name': 'English', 'code': 'en'}
         sentiment_info = {
             'sentiment': sentiment_result.sentiment, 
-            'confidence_scores': sentiment_result.confidence_scores
-        }
+            'confidence_scores': sentiment_result.confidence_scores}
         display_results(language_info, sentiment_info)
         st.session_state['input_text'] = input_text
 
 elif input_type == 'Image':
     image_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
     if image_file and st.button("Analyze Image"):
-        detected_text, image = analyze_image(image_file)
-        if detected_text:
-            st.session_state['input_text'] = detected_text
-            sentiment_result = analyze_sentiment(detected_text)
-            language_info = {'name': 'English', 'code': 'en'}
-            sentiment_info = {
-                'sentiment': sentiment_result.sentiment, 
-                'confidence_scores': sentiment_result.confidence_scores
-            }
-            display_results(language_info, sentiment_info)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
-        else:
-            st.write("No text detected in the image.")
+        try:
+            st.image(image_file, caption="Uploaded Image", use_column_width=True)
+            detected_text, image = analyze_image(image_file)
+            if detected_text:
+                st.session_state['input_text'] = detected_text
+                sentiment_result = analyze_sentiment(detected_text)
+                language_info = {'name': 'English', 'code': 'en'}
+                sentiment_info = {
+                    'sentiment': sentiment_result.sentiment, 
+                    'confidence_scores': sentiment_result.confidence_scores}
+                display_results(language_info, sentiment_info)
+            else: st.write("No text detected in the image.")
+        except Exception as e:
+            st.write(f"Error analyzing image: {e}")
 
 elif input_type == 'Voice':
     if st.button("Record Voice"):
@@ -101,11 +96,9 @@ elif input_type == 'Voice':
             language_info = {'name': 'English', 'code': 'en'}
             sentiment_info = {
                 'sentiment': sentiment_result.sentiment, 
-                'confidence_scores': sentiment_result.confidence_scores
-            }
+                'confidence_scores': sentiment_result.confidence_scores}
             display_results(language_info, sentiment_info)
-        else:
-            st.write("No speech recognized.")
+        else: st.write("No speech recognized.")
 
 if 'input_text' in st.session_state:
     target_language = st.text_input("Enter the target language code for translation")
