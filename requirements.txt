@@ -3,4 +3,4 @@ azure-ai-translation-text==1.0.0b1
 azure-ai-vision-imageanalysis==1.0.0b3
 azure-cognitiveservices-speech==1.40.0
 python-dotenv==1.0.0
-streamlit==1.26.0
+streamlit==1.37.0
