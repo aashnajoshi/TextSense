@@ -6,7 +6,6 @@ import azure.cognitiveservices.speech as speechsdk
 from azure.ai.translation.text.models import InputTextItem
 from dotenv import load_dotenv
 import streamlit as st
-from PIL import Image
 import os
 
 load_dotenv()
@@ -19,6 +18,7 @@ translator_region = os.getenv('TRANSLATOR_REGION')
 translator_key = os.getenv('TRANSLATOR_KEY')
 speech_key = os.getenv("SPEECH_API_KEY")
 speech_region = os.getenv("SPEECH_REGION")
+
 def detect_language(input_text):
     client = TextAnalyticsClient(endpoint=text_analytics_endpoint, credential=AzureKeyCredential(text_analytics_key))
     language_response = client.detect_language([input_text])
@@ -54,12 +54,12 @@ def speech_to_text():
     audio_config = speechsdk.AudioConfig(use_default_microphone=True)
     speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
     result = speech_recognizer.recognize_once()
-    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        return result.text
+    if result.reason == speechsdk.ResultReason.RecognizedSpeech: return result.text
     else: return None
 
 st.title('TextSense')
 input_type = st.selectbox("Choose input type:", ["Text", "Image", "Voice"])
+
 if input_type == 'Text':
     input_text = st.text_area("Enter text to analyze")
     if st.button("Analyze Text"):
