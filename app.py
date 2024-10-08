@@ -19,6 +19,10 @@ translator_region = os.getenv('TRANSLATOR_REGION')
 translator_key = os.getenv('TRANSLATOR_KEY')
 speech_key = os.getenv("SPEECH_API_KEY")
 speech_region = os.getenv("SPEECH_REGION")
+def detect_language(input_text):
+    client = TextAnalyticsClient(endpoint=text_analytics_endpoint, credential=AzureKeyCredential(text_analytics_key))
+    language_response = client.detect_language([input_text])
+    return language_response[0].primary_language
 
 def analyze_sentiment(input_text):
     client = TextAnalyticsClient(endpoint=text_analytics_endpoint, credential=AzureKeyCredential(text_analytics_key))
@@ -60,7 +64,8 @@ if input_type == 'Text':
     input_text = st.text_area("Enter text to analyze")
     if st.button("Analyze Text"):
         sentiment_result = analyze_sentiment(input_text)
-        language_info = {'name': 'English', 'code': 'en'}
+        detected_languages = detect_language(input_text)
+        language_info = {'name': detected_languages.name, 'code': detected_languages.iso6391_name}
         sentiment_info = {
             'sentiment': sentiment_result.sentiment, 
             'confidence_scores': sentiment_result.confidence_scores}
@@ -76,7 +81,8 @@ elif input_type == 'Image':
             if detected_text:
                 st.session_state['input_text'] = detected_text
                 sentiment_result = analyze_sentiment(detected_text)
-                language_info = {'name': 'English', 'code': 'en'}
+                detected_languages = detect_language(detected_text)
+                language_info = {'name': detected_languages.name, 'code': detected_languages.iso6391_name}
                 sentiment_info = {
                     'sentiment': sentiment_result.sentiment, 
                     'confidence_scores': sentiment_result.confidence_scores}
@@ -93,7 +99,8 @@ elif input_type == 'Voice':
             st.write("Detected Voice:")
             st.write(recognized_text)
             sentiment_result = analyze_sentiment(recognized_text)
-            language_info = {'name': 'English', 'code': 'en'}
+            detected_languages = detect_language(recognized_text)
+            language_info = {'name': detected_languages.name, 'code': detected_languages.iso6391_name}
             sentiment_info = {
                 'sentiment': sentiment_result.sentiment, 
                 'confidence_scores': sentiment_result.confidence_scores}
