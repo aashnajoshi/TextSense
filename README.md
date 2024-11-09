@@ -7,14 +7,12 @@ TextSense is a text analysis tool that processes and analyzes text data using ma
 - Named Entity Recognition to classify entities such as names, organizations, and locations.
 
 ## Usage
-
 ### All required libraries can be installed using a single-line command:
 ```bash
 pip install -r requirements.txt
 ```
 
 ### While to run the code:
-
 #### Console-based version:
 ```bash
 python main.py
